@@ -15,17 +15,18 @@ return new class extends Migration
             $table->id();
             $table->foreignId('event_id')->constrained('events')->onDelete('cascade');
             $table->foreignId('district_id')->index();
-            $table->string('nid')->unique();
+            $table->string('nid');
             $table->string('name');
             $table->string('cellphone');
             $table->string('email');
-            $table->string('address');
-            $table->string('city');
-            $table->string('attached');
+            $table->string('address')->nullable();
+            $table->string('city')->nullable();
+            $table->string('attached')->nullable();
             $table->foreignId('user_id')->index();
             $table->foreignId('team_id')->index();
             $table->integer('additional');
             $table->timestamps();
+            $table->unique(['event_id', 'nid', 'email'], 'uidx_event_nid_email');
         });
     }
 

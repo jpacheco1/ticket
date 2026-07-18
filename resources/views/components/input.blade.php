@@ -10,7 +10,9 @@
 <div class="mb-3">
     <label class="form-label">
         {{$label}}
-        <span style="color: #dc3545;">{{ $required != 'true'? '' : ' *' }}</span>
+        @if ($required)
+            <span class="text-danger">*</span>
+        @endif
     </label>
     <input
         type="{{$type}}"

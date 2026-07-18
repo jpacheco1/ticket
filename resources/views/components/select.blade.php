@@ -3,11 +3,17 @@
     'label' => '',
     'placeholder' => '',
     'selected' => null,
+    'required'=>'',
     'options' => []
 ])
 
 <div class="mb-3">
-    <label class="form-label">{{ $label }}</label>
+    <label class="form-label">
+        {{ $label }}
+        @if ($required)
+            <span class="text-danger">*</span>
+        @endif
+    </label>
     <select
         name="{{ $name }}"
         id="{{ $name }}"
