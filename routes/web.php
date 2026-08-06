@@ -47,7 +47,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('attendance', AttendanceController::class);
     Route::resource('memories', MemoriesController::class);
 
-    Route::get('/logout', [AuthController::class, 'destroy'])->name('logout');
+    Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 
 });
 
