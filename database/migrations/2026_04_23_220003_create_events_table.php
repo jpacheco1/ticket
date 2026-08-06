@@ -22,8 +22,7 @@ return new class extends Migration
             $table->integer('quota_by_district')->default(0);
             $table->integer('quota_additional')->default(0);
             $table->integer('quota_max')->default(0);
-            $table->integer('active_inscription')->default(0);
-            $table->foreignId('role_id')->index();
+            $table->foreignId('user_id')->index();
             $table->foreignId('team_id')->index();
             $table->foreignId('district_id')->index();
             $table->timestamps();

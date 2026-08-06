@@ -15,13 +15,19 @@ use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Picqer\Barcode\BarcodeGeneratorPNG;
 
+use Illuminate\Support\Facades\Auth;
+
 class InscriptionController extends Controller
 {
-    public function index()
+    public function register()
     {
+        $events = Event::select('events.id', DB::raw('CONCAT_WS(" ",events.name,"|",districts.name) as name'))
+        ->join('districts', 'districts.id', '=', 'events.district_id')
+        ->where('events.active', true)->get();
+
         $districts = District::select('id', 'name')->where('active', true)->get();
         $teams = Team::select('id', 'name')->where('active', true)->get();
-        return view('inscriptions', compact('districts', 'teams'));
+        return view('inscriptions', compact('districts', 'teams','events'));
     }
 
      public function events($district_id)
@@ -72,6 +78,9 @@ class InscriptionController extends Controller
         );
 
         $count_event = Inscription::where('event_id', $request->event_id)->count();
+
+        /*
+
         $count_district = Inscription::where('event_id', $request->event_id)
             ->where('district_id', $request->district_id)
             ->count();
@@ -86,23 +95,29 @@ class InscriptionController extends Controller
             }
         }else{
             return redirect()->back()->withErrors(['event_id' => 'El evento ha alcanzado el límite máximo de inscripciones.']);
-        }
+        }*/
 
 
-        $request->merge([
-            'additional' => 0,
-            'user_id' => '1',
-        ]);
+
+
+        //session
+        $user_id = Auth::user()->id ?? 0;
+        $request->merge(['user_id' => $user_id]);
 
         $inscription = Inscription::create($request->all());
 
         Mail::to($inscription->email)->send(new InscriptionCreated($inscription));
 
-        return redirect()->route('inscriptions.index')->with('success', 'Inscripción creada con éxito');
+        if($user_id){
+           return redirect()->route('inscriptions.index',['event_id'=>$request->event_id])->with('success', 'Inscripción creada con éxito');
+        }
+
+        return redirect()->route('inscriptions.register')->with('success', 'Inscripción creada con éxito');
     }
 
-    public function generarTicket($id)
+    public function ticket($id)
     {
+
         $inscription_id = explode('-', $id)[0] ?? null;
         $event_id = explode('-', $id)[1] ?? null;
         $nid = explode('-', $id)[2] ?? null;
@@ -136,4 +151,68 @@ class InscriptionController extends Controller
         $pdf = Pdf::loadView('pdfs.ticket_created',compact('data','barcode','logoBase64','date'));
         return $pdf->stream('ticket.pdf');
     }
+
+    public function index($event_id)
+    {
+        $user = Auth::user();
+        $district_id = (int) $user->district_id;
+
+        $event = Event::findOrFail($event_id);
+        $inscriptions_count = Inscription::where('event_id', $event_id)
+        ->where('additional', 0)
+        ->when($district_id < 36, function ($query) use ($district_id) {
+            return $query->where('district_id', $district_id);
+        })
+        ->count();
+
+        $inscriptions_additional_count = Inscription::where('event_id', $event_id)
+        ->where('additional', 1)
+        ->when($district_id < 36, function ($query) use ($district_id) {
+            return $query->where('district_id', $district_id);
+        })
+        ->count();
+
+        return view('inscriptions.index', compact('event', 'inscriptions_count', 'inscriptions_additional_count'));
+    }
+
+
+    public function jsonData(Request $request, $event_id)
+    {
+        $columns = ['inscriptions.nid','inscriptions.name', 'inscriptions.email'];
+        $search = $request->query('search') ?? '';
+
+        $inscriptions = Inscription::select(
+            'inscriptions.id',
+            'inscriptions.name',
+            'inscriptions.nid',
+            'inscriptions.email',
+            'inscriptions.cellphone',
+            'inscriptions.additional',
+            'inscriptions.created_at',
+            'inscriptions.event_id',
+            'teams.name as team'
+        )
+        ->join('teams', 'teams.id', '=', 'inscriptions.team_id')
+        ->where('inscriptions.event_id', $event_id)
+        ->where(function ($query) use ($search, $columns) {
+            foreach ($columns as $column) {
+                $query->orWhere($column, 'LIKE', "%{$search}%");
+            }
+        })
+        ->orderBy('inscriptions.id', 'desc')
+        ->paginate(10);
+
+        return response()->json($inscriptions);
+    }
+
+    public function create($event_id)
+    {
+
+        $districts = District::select('id', 'name')->where('active', true)->get();
+        $teams = Team::select('id', 'name')->where('active', true)->get();
+        $additionals =[["id"=>0,"name"=>"No"],["id"=>1,"name"=>"Sí"]];
+        return view('inscriptions.create', compact('event_id', 'districts', 'teams','additionals'));
+    }
+
+
 }

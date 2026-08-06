@@ -5,8 +5,12 @@
 ])
 
 <div class="card border-0 {{ $class }}" style="{{$style ?? ''}}">
+    @if ($title)
+    <div class="card-header">
+        {{ $title }}
+    </div>
+    @endif
     <div class="card-body">
-        <h5 class="card-title text-center">{{ $title }}</h5>
-        <p class="card-text">{{ $slot }}</p>
+        {{ $slot }}
     </div>
 </div>
